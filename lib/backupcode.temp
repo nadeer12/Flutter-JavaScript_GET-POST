@@ -1,0 +1,126 @@
+import 'package:flutter/material.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+void main() {
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: WebViewExample(),
+    );
+  }
+}
+
+
+class WebViewExample extends StatefulWidget {
+  @override
+  _WebViewExampleState createState() => _WebViewExampleState();
+}
+
+class _WebViewExampleState extends State<WebViewExample> {
+  final TextEditingController _urlController = TextEditingController();
+  final Completer<WebViewController> _webController =
+      Completer<WebViewController>();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: WebView(
+          initialUrl: 'https://nadeer12.github.io/flutter_api_communication/',
+          javascriptMode: JavascriptMode.unrestricted,
+          onWebViewCreated: (WebViewController webViewController) {
+            _webController.complete(webViewController);
+          },
+          javascriptChannels: <JavascriptChannel>{
+            JavascriptChannel(
+              name: 'flutter',
+              onMessageReceived: (JavascriptMessage message) {
+                fetchData(message.message).then((apiData) {
+                  _webController.future.then((controller) =>
+                      controller.evaluateJavascript(
+                          'displayApiData("${_urlController.text}", ${jsonEncode(apiData)})'));
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Data fetch successful'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                });
+
+                Map<String, dynamic> data = jsonDecode(message.message);
+                String apiUrl = data['apiUrl'];
+                String method = data['method'];
+                Map<String, dynamic> formData = data['data'];
+
+                if (method == 'POST') {
+                  postData(apiUrl, formData);
+                } else {
+                  null;
+                }
+              },
+            ),
+          },
+        ),
+      ),
+    );
+  }
+
+  void ErrorSnackbar(String message){
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content:Text(message),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Future<dynamic> fetchData(String apiUrl) async {
+    try {
+      final response = await http.get(Uri.parse(apiUrl));
+      if (response.statusCode == 200) {
+        final dynamic data = jsonDecode(response.body);
+        return data;
+      } else {
+        throw 'Failed to fetch data (HTTP ${response.statusCode})';
+      }
+    } catch (error) {
+      // throw 'Error: $error';
+      ErrorSnackbar('Error Fechting data: $error');
+      return null;
+    }
+  }
+
+  Future<void> postData(String apiUrl, Map<String, dynamic> data) async {
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(data),
+      );
+
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Data posted successfully'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      } else {
+        throw 'Failed to post data (HTTP ${response.statusCode})';
+      }
+    } catch (error) {
+      ErrorSnackbar('Error Posting Data: $error');
+      return null;
+    }
+  }
+}

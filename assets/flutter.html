@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flutter WebView Communication</title>
+</head>
+<body>
+
+    <h1>Enter a Message:</h1>
+
+    <input type="text" id="messageInput" placeholder="Type your message">
+    <button onclick="sendMessageToFlutter()">Send to Flutter</button>
+
+    <script>
+        function sendMessageToFlutter() {
+            // Get the input value
+            var message = document.getElementById('messageInput').value;
+
+            // Check if the 'flutter' channel is available
+            if (window.flutter) {
+                // Send the message to Flutter
+                window.flutter.postMessage(message);
+            } else {
+                console.error('Flutter channel not available');
+            }
+        }
+    </script>
+
+</body>
+</html>
